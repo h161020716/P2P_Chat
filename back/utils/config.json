@@ -1,0 +1,8 @@
+{
+  "MYSQL": {
+    "HOST": "localhost",
+    "USER": "root",
+    "PASSWORD": "Hby20040627!!",
+    "DATABASE": "chat_app"
+  }
+}
