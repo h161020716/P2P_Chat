@@ -1,7 +1,6 @@
 import socket
 import threading
 import os
-import pyaudio
 import time
 import json
 import hashlib
