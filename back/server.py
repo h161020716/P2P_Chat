@@ -178,7 +178,7 @@ class ChatServer:
         try:
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.connect((server_host, server_port))
-            self.send_message(f"SERVER_LOGIN:{phone};{password}")
+            self.send_message(f"SERVER_LOGIN:{phone};{password}", target=server_socket)
         except Exception as e:
             print(f"Error connecting to server {server_host}:{server_port}: {e}")
     
@@ -206,7 +206,7 @@ class ChatServer:
                     self.broadcast(f"FROM:{username};{message}", exclude=client_socket)
                 elif data.startswith("FILETO:"):
                     # 定向文件发送
-                    file_info, file_path, target_client = data[7:].split(";", 1)
+                    file_info, file_path, target_client = data[7:].split(";", 2)
                     file_info = json.loads(file_info)
                     self.push_file(target_client, file_info, file_path)
                 elif data.startswith("SENDTO:"):
