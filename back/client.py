@@ -172,9 +172,6 @@ class ChatClient:
                 target = input("Enter target client: ")
                 message = input("Enter your message: ")
                 self.send_message(f"SENDTO:{target};{message}")
-            # elif command == "deliver": # 上传文件
-            #     filename = input("Enter filename to upload: ")
-            #     self.send_file(filename)
             elif command == "deliverto":# 上传文件给指定客户端
                 target = input("Enter target client: ")
                 filename = input("Enter filename to upload: ")
@@ -187,6 +184,9 @@ class ChatClient:
                 print("Commands: chat, chatto, sendto, get, deliver, deliverto, startaudio, exit")
             else:
                 print("Unknown command.")
+    def start(self,):
+        self.connect()
+        self.start_chat()
 
 if __name__ == "__main__":
     # Replace 'your_key_here' with your encryption key
@@ -197,5 +197,4 @@ if __name__ == "__main__":
         upload_path=r"Client1UPLOAD",
         download_path=r"Client1DOWNLOAD"
     )
-    client.connect()
-    client.start_chat()
+    client.start()

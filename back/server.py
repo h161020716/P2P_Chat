@@ -15,14 +15,12 @@ class ChatServer:
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients = {}  # {phone: (socket, address)}
-        self.peer_servers = []  # 其他服务器的连接
+        self.peer_servers = {}  # 其他服务器的连接
         self.encryption = Encryption(encryption_key)
         self.upload_path = "ServerUpload"
         self.download_path = "ServerDownload"
         self.logged_in = False
         self.client_phone = None
-
-
 
         if not os.path.exists(self.upload_path):
             os.makedirs(self.upload_path, exist_ok=True)
@@ -180,14 +178,13 @@ class ChatServer:
         try:
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.connect((server_host, server_port))
-            self.send_message(f"LOGIN:{self.phone};{self.password}")
-            self.peer_servers.append(server_socket)
-
-            while self.logged_in == False:
-                time.sleep(0.1)
-            print(f"Connected to server {server_host}:{server_port}")
+            self.send_message(f"SERVER_LOGIN:{phone};{password}")
         except Exception as e:
             print(f"Error connecting to server {server_host}:{server_port}: {e}")
+    
+    def receive_server_login(self, server_socket, nickname):
+        self.peer_servers[nickname] = server_socket
+        self.send_message(message="LOGIN_SUCCESS",target=server_socket)
 
     def handle_client(self, client_socket, username):
         while True:
@@ -219,13 +216,18 @@ class ChatServer:
                 elif data.startswith("CONN:"):
                     server_host, server_port, phone, password = data[5:].split(";", 3)
                     self.connect_to_server(server_host, int(server_port), phone, password)
+
 # 上面是接受客户端发送的消息，下面是接受服务器消息
+                
                 elif data.startswith("FILE_FROM:"):
                     file_info, source_client = data[9:].split(";", 1)
                     file_info = json.dumps(file_info)
                     self.receive_file(source_client, json.loads(file_info))
                     self.send_message("NEW_FILE:{file_info};{source_client}",
                                        encrypted=False, target=self.clients[self.client_phone][0])
+                elif data.startswith("SERVER_LOGIN:"):
+                    phone, password = data[13:].split(";", 1)
+                    self.receive_server_login(client_socket, phone, password)
                 elif data.startswith("LOGIN_SUCCESS"):
                     print("Login successful! Welcome to the chat.")
                     self.logged_in = True
@@ -241,7 +243,7 @@ class ChatServer:
 
 
 if __name__ == "__main__":
-    HOST = "127.0.0.1"
+    HOST = "0.0.0.0"
     PORT = 8080
     ENCRYPTION_KEY = "SJWKOJM<ASDFASD-"
 
