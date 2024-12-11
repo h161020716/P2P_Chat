@@ -183,7 +183,7 @@ class ChatServer:
     
     def receive_server_login(self, server_socket, nickname):
         self.peer_servers[nickname] = server_socket
-        self.send_message(message="LOGIN_SUCCESS",target=server_socket)
+        self.send_message(message="CONN_SUCCESS",target=server_socket)
 
     def handle_client(self, client_socket, username):
         while True:
@@ -197,7 +197,7 @@ class ChatServer:
                 elif data[0:1] == b'1':
                     data = self.encryption.decrypt(data[1:].decode())
                  
-                print(self.clients)
+                print(data)
                 # 处理不同类型的消息
                 if data.startswith("CHAT:"):
                     # 广播消息
@@ -232,6 +232,9 @@ class ChatServer:
                     self.logged_in = True
                 elif data.startswith("LOGIN_FAILED"):
                     print("Login failed! Please check your phone number and password.")
+                elif data.startswith("CONN_SUCCSS:"):
+                    print(f"Connected to server {data[13:]}")
+                    self.send_message("CONN_SUCCESS", encrypted=False, target=self.clients[self.client_phone][0])
                 elif data.startswith("EXIT"):
                     break
             except Exception as e:

@@ -144,6 +144,8 @@ class ChatClient:
                     file_info, source = data[9:].split(";", 1)
                     file_info = json.loads(file_info)
                     self.receive_file(file_info, source)
+                elif data.startswith("CONN_SUCCESS:"):
+                    print("Connection to server successful!")
                 else:
                     print(f"Unknown message: {data}")
             except Exception as e:
@@ -165,7 +167,7 @@ class ChatClient:
                 print("Exiting...")
                 self.client_socket.close()
                 break
-            elif command == "chat": # 广播消息
+            elif command == "chat": #
                 message = input("Enter your message: ")
                 self.send_message(f"CHAT:{message}")
             elif command == "sendto": # 发送消息给指定用户
