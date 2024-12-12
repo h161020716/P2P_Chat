@@ -77,7 +77,7 @@ class ChatApp:
         username = self.username_entry.get()
         password = self.password_entry.get()
         if username and password:
-            self.conn_to_client.send(f"LOGIN:{"admin"};{password}")
+            self.conn_to_client.send(f"LOGIN:{username};{password}")
             self.check_login_response()
         else:
             messagebox.showerror("登录失败", "用户名或密码不能为空！")

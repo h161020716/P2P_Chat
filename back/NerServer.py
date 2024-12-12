@@ -67,7 +67,7 @@ class ChatServer:
                 break
 
     # 通过socket处理与其他server的通信
-    def handle_server(self, conn, addr):
+    def handle_server(self, conn):
         while self.running:
             try:
                 data = conn.recv(1024)
@@ -99,12 +99,17 @@ class ChatServer:
             except Exception as e:
                 print(f"Error handle_server: {e}")
                 break
+
+    def accept_client(self, ):
+        while self.running:
+            conn, addr = self.listen_socket.accept()
+            threading.Thread(target=self.handle_server, args=(conn,), daemon=True).start()
                 
     # 通过管道处理与client的通信
     def start(self,):
         self.listen_socket.bind(("", self.port))
         self.listen_socket.listen(5)
-        threading.Thread(target=self.handle_server, args=(self.listen_socket, (host, port)), daemon=True).start()
+        threading.Thread(target=self.accept_client, daemon=True).start()
         print("Server started")
         while self.running: 
             if self.conn_from_client.poll(0.1): 
