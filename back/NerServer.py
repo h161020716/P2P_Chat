@@ -110,7 +110,7 @@ class ChatServer:
         self.listen_socket.bind(("", self.port))
         self.listen_socket.listen(5)
         threading.Thread(target=self.accept_client, daemon=True).start()
-        print("Server started")
+        print(f"Server started on {self.host}:{self.port}")
         while self.running: 
             if self.conn_from_client.poll(0.1): 
                 msg = self.conn_from_client.recv()
