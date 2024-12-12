@@ -19,6 +19,7 @@ class ChatApp:
 
         self.bg_photo = None  # 保存背景图片的引用
         self.username_entry = None
+        self.username = None
         self.password_entry = None
 
         self.SendArea = None 
@@ -89,6 +90,7 @@ class ChatApp:
             if response == "LOGIN_SUCCESS":
 
                 username = self.username_entry.get()
+                self.username = username
                 new_user = {
                     "username": "'"+username+"'",
                     "password": "'"+self.password_entry.get()+"'",

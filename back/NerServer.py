@@ -40,6 +40,7 @@ class ChatServer:
         target.send(message.encode())
     #我去主动连接别的server
     def connect_server(self, host, port):
+        port = int(port)
         self.server_socket.connect((host, port)) # 连接
         self.send_message(f"CONN:{self.host};{self.port};{self.client_username}", target=self.server_socket) # 发送连接消息
 
@@ -57,6 +58,7 @@ class ChatServer:
 
                 if data.startswith("CONN_SUCCESS"):
                     to_host, to_port, nickname = data.split(":")[1].split(";",2)
+                    to_port = to_port
                     if to_host == self.host and to_port == self.port:
                         self.conn_to_client.send(f"CONN_SUCCESS:{nickname}")
                         threading.Thread(target=self.handle_server, args=(self.server_socket, (host, port)), daemon=True).start()
@@ -81,6 +83,7 @@ class ChatServer:
                 if data.startswith("CONN:"):
                     try:
                         host, port, nickname = data.split(":")[1].split(";", 2)
+                        port = eval(port)
                         self.server_socket.connect((host, port))
                         self.send_message(f"CONN_SUCCESS:{self.host};{self.port};{self.client_username}", target=self.server_socket)
                         self.servers[nickname] = (host, port)
