@@ -9,7 +9,7 @@ from utils.encryption import Encryption
 
 
 class ChatServer:
-    def __init__(self, host, port, encryption_key):
+    def __init__(self, host, port, encryption_key, server_to_client, client_to_server):
         self.host = host
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -251,13 +251,3 @@ if __name__ == "__main__":
 
     server = ChatServer(HOST, PORT, ENCRYPTION_KEY)
     server.start()
-
-    while True:
-        try:
-            command = input("Server Command> ")
-            if command.lower() == "exit":
-                print("Shutting down server...")
-                break
-        except KeyboardInterrupt:
-            print("Shutting down server...")
-            break
