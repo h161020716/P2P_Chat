@@ -4,6 +4,7 @@ from back.NewClient import ChatClient
 from back.NerServer import ChatServer
 from front.app import ChatApp
 import tkinter as tk
+import socket
 import time
 
 if __name__ == "__main__":
@@ -14,7 +15,7 @@ if __name__ == "__main__":
     app_to_client, client_from_app = Pipe()
     client_to_app, app_from_client = Pipe()
 
-    server_HOST = ""
+    server_HOST = socket.gethostname() 
     server_PORT = 8080
     server_ENCRYPTION_KEY = "SJWKOJM<ASDFASD-"
     root = tk.Tk()
