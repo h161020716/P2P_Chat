@@ -11,7 +11,8 @@ class ChatServer:
     def __init__(self, host, port, encryption_key, server_to_client, client_to_server):
         self.host = host
         self.port = port
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_username = None
         
         self.encryption = Encryption(encryption_key)
@@ -41,12 +42,12 @@ class ChatServer:
     #我去主动连接别的server
     def connect_server(self, host, port):
         port = int(port)
-        self.server_socket.connect((host, port)) # 连接
-        self.send_message(f"CONN:{self.host};{self.port};{self.client_username}", target=self.server_socket) # 发送连接消息
-
+        self.connect_socket.connect((host, port)) # 连接
+        self.send_message(f"CONN:{self.host};{self.port};{self.client_username}", target=self.connect_socket) # 发送连接消息
+        print("11111111111111")
         while self.running:
             try:
-                data = self.server_socket.recv(1024)
+                data = self.connect_socket.recv(1024)
                 
                 if not data:
                     break
@@ -61,7 +62,6 @@ class ChatServer:
                     to_port = to_port
                     if to_host == self.host and to_port == self.port:
                         self.conn_to_client.send(f"CONN_SUCCESS:{nickname}")
-                        threading.Thread(target=self.handle_server, args=(self.server_socket, (host, port)), daemon=True).start()
             except Exception as e:
                 print(f"Error connect_server: {e}")
                 break
@@ -84,7 +84,6 @@ class ChatServer:
                     try:
                         host, port, nickname = data.split(":")[1].split(";", 2)
                         port = eval(port)
-                        self.server_socket.connect((host, port))
                         self.send_message(f"CONN_SUCCESS:{self.host};{self.port};{self.client_username}", target=self.server_socket)
                         self.servers[nickname] = (host, port)
                         self.conn_to_client.send(f"CONN_SUCCESS:{nickname}")
@@ -103,6 +102,9 @@ class ChatServer:
                 
     # 通过管道处理与client的通信
     def start(self,):
+        self.listen_socket.bind(("", self.port))
+        self.listen_socket.listen(5)
+        threading.Thread(target=self.handle_server, args=(self.listen_socket, (host, port)), daemon=True).start()
         print("Server started")
         while self.running: 
             if self.conn_from_client.poll(0.1): 
@@ -116,7 +118,6 @@ class ChatServer:
                         username, password = msg.split(":")[1].split(";")
                         if self.check_user(username, password):
                             self.client_username = username
-                            print("123123123")
                             self.conn_to_client.send("LOGIN_SUCCESS")
                         else:
                             self.conn_to_client.send("ERROR: 用户名或密码错误")
