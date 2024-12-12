@@ -14,7 +14,7 @@ if __name__ == "__main__":
     app_to_client, client_from_app = Pipe()
     client_to_app, app_from_client = Pipe()
 
-    server_HOST = "0.0.0.0"
+    server_HOST = ""
     server_PORT = 8080
     server_ENCRYPTION_KEY = "SJWKOJM<ASDFASD-"
     root = tk.Tk()
