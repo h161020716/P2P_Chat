@@ -42,6 +42,7 @@ class ChatServer:
     #我去主动连接别的server
     def connect_server(self, host, port):
         port = int(port)
+        print(port)
         self.connect_socket.connect((host, port)) # 连接
         self.send_message(f"CONN:{self.host};{self.port};{self.client_username}", target=self.connect_socket) # 发送连接消息
         print("11111111111111")
@@ -68,6 +69,8 @@ class ChatServer:
 
     # 通过socket处理与其他server的通信
     def handle_server(self, conn):
+        print("handle_server")
+        
         while self.running:
             try:
                 data = conn.recv(1024)
@@ -100,16 +103,16 @@ class ChatServer:
                 print(f"Error handle_server: {e}")
                 break
 
-    def accept_client(self, ):
-        while self.running:
-            conn, addr = self.listen_socket.accept()
-            threading.Thread(target=self.handle_server, args=(conn,), daemon=True).start()
-                
-    # 通过管道处理与client的通信
+    def accept_clients(self):
+        while True:
+            client_socket, client_address = self.listen_socket.accept()
+            print(f"Client connected: {client_address}")
+            threading.Thread(target=self.handle_server, args=(client_socket,), daemon=True).start()
+
+    # 通过管道处理与client的通信你
     def start(self,):
-        self.listen_socket.bind(("", self.port))
+        self.listen_socket.bind((self.host, self.port))
         self.listen_socket.listen(5)
-        threading.Thread(target=self.accept_client, daemon=True).start()
         print(f"Server started on {self.host}:{self.port}")
         while self.running: 
             if self.conn_from_client.poll(0.1): 
@@ -124,6 +127,7 @@ class ChatServer:
                         if self.check_user(username, password):
                             self.client_username = username
                             self.conn_to_client.send("LOGIN_SUCCESS")
+                            threading.Thread(target=self.accept_clients, daemon=True).start()
                         else:
                             self.conn_to_client.send("ERROR: 用户名或密码错误")
                     except Exception as e:
