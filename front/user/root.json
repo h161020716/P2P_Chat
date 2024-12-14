@@ -1,0 +1,28 @@
+{
+    "username" : "root",
+    "password" : "123456",
+    "groups" : [
+        {
+            "group_name" : "家人",
+            "group_id" : "first",
+            "group_members" : [
+                {
+                    "id": "1",
+                    "name": "admin",
+                    "values" : ["1", "表哥"]
+                }
+            ]
+        },
+        {
+            "group_name" : "同学",
+            "group_id" : "second",
+            "group_members" : [
+                {
+                    "id": "2",
+                    "name": "小红",
+                    "values" : ["2",""]
+                }
+            ]
+        }
+    ]
+}

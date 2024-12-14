@@ -1,10 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import filedialog
 from PIL import Image, ImageTk
 import json
 import os
 import time
+import wx
 import queue
 import threading
 import subprocess
@@ -18,6 +20,8 @@ class ChatApp:
         self.main_frame = None
 
         self.bg_photo = None  # 保存背景图片的引用
+        self.image_refs = []
+        
         self.username_entry = None
         self.username = None
         self.password_entry = None
@@ -38,7 +42,7 @@ class ChatApp:
     def setup_login_ui(self):
         """设置登录界面"""
         # 设置背景图片
-        bg_image = Image.open("D:\\kindoflife\\study\\计算机网络\\实验二\\P2P_Chat\\front\\images\\loginbackground.jpg")  # 替换为你的图片路径
+        bg_image = Image.open("front\\images\\loginbackground.jpg")  # 替换为你的图片路径
         bg_image = bg_image.resize((500, 300), Image.Resampling.LANCZOS)  # 调整图片大小
         self.bg_photo = ImageTk.PhotoImage(bg_image)
         bg_label = tk.Label(self.root, image=self.bg_photo)
@@ -86,7 +90,7 @@ class ChatApp:
         # 定期检查Client有没有返回消息
         if self.conn_from_client.poll():
             response = self.conn_from_client.recv()
-            print(f"APP: {response}")
+            print(f"LOGIN APP: {response}")
             if response == "LOGIN_SUCCESS":
 
                 username = self.username_entry.get()
@@ -96,18 +100,18 @@ class ChatApp:
                     "password": "'"+self.password_entry.get()+"'",
                 }
 
-                if not os.path.exists("front/user/admin.json"):
+                if not os.path.exists(f"front/user/{username}.json"):
                     with open("front/user/admin.json", "w") as f:
                         json.dump(new_user, f)
 
-                with open("front/user/admin.json", "r", encoding="utf-8") as f:
+                with open(f"front/user/{username}.json", "r", encoding="utf-8") as f:
                     user = json.load(f)
 
                 self.groups = user['groups']
                 for group in self.groups:
                     for user in group["group_members"]:
                         self.userData[user['id']] = {"host": "", "port": ""}
-            
+                print(f"用户数据: {self.userData}")
                 self.root.withdraw()
                 self.open_friend_window()
             else:
@@ -128,17 +132,85 @@ class ChatApp:
     def send_msg(self, event=None):
         msg = self.SendArea.get("0.0", "end")  # 1.0 表示第一行第0列, end-1c 表示倒数第一个字符
         
-        if not msg:
+        if not msg.strip():  # 去掉空白字符后检查消息是否为空
             messagebox.showerror("发送失败", "消息不能为空！")
+            return  # 直接返回，不发送空消息
         
         self.ChatArea.configure(state=tk.NORMAL)
-            
+        print(f"slef.curUser: {self.curUser}")
+        
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
         self.ChatArea.insert("end", "我：" + timestamp, "green")
         self.ChatArea.insert("end", msg + "\n")
+        self.conn_to_client.send(f"MSG:{self.curUser};{msg}")
 
-        self.SendArea.delete("0.0", "end")   
+        # 清空 SendArea 并将光标移动到开始位置
+        self.SendArea.delete("1.0", "end")
+        self.SendArea.insert("1.0", "")  # 确保光标在开始位置
+        self.SendArea.mark_set("insert", "1.0")  # 显式设置光标到开始位置
         self.ChatArea.configure(state=tk.DISABLED)
+
+    def insert_File(self, file_path, username):
+        self.ChatArea.configure(state=tk.NORMAL)
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+        self.ChatArea.insert("end", f"{username}：" + timestamp, "green")
+        self.ChatArea.insert("end", f"发送文件: {file_path}\n")
+        self.ChatArea.configure(state=tk.DISABLED)
+    
+    def show_maessagboxe(self, nickname):
+        messagebox.showinfo("聊天邀请", f"{nickname}向您发起聊天")
+
+    def check_msg(self):
+        if self.conn_from_client.poll():
+            response = self.conn_from_client.recv()
+            print(f"APP接受消息: {response}")
+            if response.startswith("MSG:"):
+                from_user, message = response.split(":")[1].split(";", 1)
+                self.ChatArea.configure(state=tk.NORMAL)
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+                self.ChatArea.insert("end", from_user + "：" + timestamp)
+                self.ChatArea.insert("end", message + "\n")
+                self.ChatArea.configure(state=tk.DISABLED)
+            elif response.startswith("CONN_SUCCESS:"):
+                nickname, host, port = response.split(":")[1].split(";", 2)
+                item_id = self.get_item_id_by_nickname(nickname)
+                self.userData[item_id] = {"host": host, "port": int(port)}
+                print(f"用户数据check_msg: {self.userData}")
+                threading.Thread(target=self.show_maessagboxe, args=(nickname,)).start()
+                self.conn_to_client.send(f"CONN:{host};{port}")
+                self.curUser = nickname
+            elif response.startswith("FILE|"):
+                nickname, file_Path = response.split("|")[1].split(";", 1)
+                self.ChatArea.configure(state=tk.NORMAL)
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+                self.ChatArea.insert("end", f"{nickname}：" + timestamp)
+                self.ChatArea.insert("end", f"发送文件: {file_Path}\n")
+                self.ChatArea.configure(state=tk.DISABLED)
+            elif response.startswith("IMAGE|"):
+                nickname, image_path = response.split("|")[1].split(";", 1)
+                img = Image.open(image_path)
+                img_resized = img.resize((128, 128), Image.Resampling.LANCZOS)
+                img_tk = ImageTk.PhotoImage(img_resized)
+                
+                self.ChatArea.configure(state=tk.NORMAL)
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+                self.ChatArea.insert("end", f"{nickname}：" + timestamp, "green")
+                self.ChatArea.image_create("end", image=img_tk)
+                self.image_refs.append(img_tk)
+                self.ChatArea.insert("end", "\n")
+                self.ChatArea.configure(state=tk.DISABLED)
+            else:
+                print(f"接收到的位置格式: {response}")
+            self.root.after(100, self.check_msg) 
+        else:
+            self.root.after(100, self.check_msg) # 100ms后再次检查
+
+    def get_item_id_by_nickname(self, nickname):
+        for group in self.groups:
+            for member in group["group_members"]:
+                if member["name"] == nickname:
+                    return member["id"]
+        return 0  # 如果找不到，返回 None
 
     def double_selected(self, event):
         item_id = self.friendTree.identify_row(event.y)
@@ -148,11 +220,13 @@ class ChatApp:
         
         user_name = self.friendTree.item(item_id, "text")
         print(f"Selected user: {user_name}")
+        print(f"当前的用户信息:{self.userData}")
 
         if item_id in self.userData:
             user_info = self.userData[item_id]
+            print(f"{user_name} 在线\n")
             if user_info['host'] and user_info['port']:
-                self.curUser = item_id
+                self.curUser = user_name
                 self.conn_to_client.send(f"CONN:{user_info['host']};{user_info['port']}")
             else:
                 messagebox.showerror("连接失败", "对方不在线！")
@@ -161,10 +235,12 @@ class ChatApp:
         
     def right_click(self, event):
         item_id = self.friendTree.identify_row(event.y)
-        print(item_id)
+        
         if not item_id:
             return
         
+        user_name = self.friendTree.item(item_id, "text")
+        print(f"右键选择: {user_name}")
         def save_changes():
             new_host = host_entry.get()
             new_port = port_entry.get()
@@ -197,13 +273,59 @@ class ChatApp:
 
         save_button = tk.Button(edit_win, text="保存", command=save_changes)
         save_button.place(x=140, y=100)
+    
+    def upload_File(self):
+    # 打开文件选择对话框
+        select_file = filedialog.askopenfilename(
+            title="选择要发送的文件",
+            filetypes=[("所有文件", "*.*")]  # 可以根据需要调整文件类型过滤
+        )
+        print(select_file)
+        if select_file:
+            self.conn_to_client.send(f"FILE|{self.curUser};{select_file}")
+            messagebox.showinfo("文件发送成功", "文件已发送！")
 
+            self.ChatArea.configure(state=tk.NORMAL)
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+            self.ChatArea.insert("end", "我：" + timestamp, "green")
+            self.ChatArea.insert("end", f"发送文件: {select_file}\n")
+            self.ChatArea.insert("end", "\n")
+            self.ChatArea.configure(state=tk.DISABLED)
+
+        # self.conn_to_client.send(f"MSG:{self.curUser};发送文件: {select_file}")
+
+    def upload_image(self):
+        file_path = filedialog.askopenfilename(
+            title="选择图片", 
+            filetypes=[("图片文件", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")]
+        )
+
+        if file_path:
+            try:
+                img = Image.open(file_path)
+                img_resized = img.resize((128, 128), Image.Resampling.LANCZOS)
+                img_tk = ImageTk.PhotoImage(img_resized)
+                
+                self.ChatArea.configure(state=tk.NORMAL)
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+                self.ChatArea.insert("end", "我：" + timestamp, "green")
+                self.ChatArea.image_create("end", image=img_tk)
+                self.image_refs.append(img_tk)
+                self.ChatArea.insert("end", "\n")
+                self.ChatArea.configure(state=tk.DISABLED)
+
+                self.conn_to_client.send(f"IMAGE|{self.curUser};{file_path}")
+
+            except Exception as e:
+                print(f"图片上传失败: {e}")
 
     def open_friend_window(self):
         """打开用户聊天界面"""
-        ChatWin = tk.Tk()
+        print(f"数据{self.userData}")
+
+        ChatWin = tk.Toplevel(self.root)
         self.main_frame = ChatWin
-        self.main_frame.title("聊天界面")
+        self.main_frame.title(f"{self.username} 聊天界面")
         self.main_frame.configure(bg="white")
         self.main_frame.protocol("WM_DELETE_WINDOW", self.on_closing)  #
         width = 1300
@@ -260,19 +382,25 @@ class ChatApp:
 
         ButtonArea = tk.Frame(ChatArea) # 按钮区域
         ButtonArea.place(x=0, y=650*2/3 - button_height, width=970, height=button_height)
-        tk.Button(ButtonArea, text="发送文件").place(x=0, y=2, width=60, height=20)
-        tk.Button(ButtonArea, text="发送图片").place(x=70, y=2, width=60, height=20)
+        tk.Button(ButtonArea, text="发送文件", command=self.upload_File).place(x=0, y=2, width=60, height=20)
+        tk.Button(ButtonArea, text="发送图片", command=self.upload_image).place(x=70, y=2, width=60, height=20)
         tk.Button(ButtonArea, text="语音").place(x=140, y=2, width=60, height=20)
         tk.Button(ButtonArea, text="视频").place(x=210, y=2, width=60, height=20)
 
         SendArea = tk.Text(ChatArea, bg="white", font=("KaiTi", 12))
         self.SendArea = SendArea
         SendArea.bind("<Return>", self.send_msg) # 绑定回车键发送消息
+        Textscrollbar = tk.Scrollbar(SendArea)
+        Textscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        Textscrollbar.config(command=SendArea.yview)
+        SendArea.config(yscrollcommand=Textscrollbar.set)
         SendArea.place(x=0, y=650*2/3, width=970, height=650/3 - button_height)
 
         EnterArea = tk.Frame(ChatArea)
         EnterArea.place(x=0, y=650 - button_height, width=970, height=button_height)
         tk.Button(EnterArea, text="发送", command=self.send_msg).place(x=910, y=0, width=60, height=button_height)
+
+        self.check_msg()
 
 # 启动主程序
 if __name__ == "__main__":
